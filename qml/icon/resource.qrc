@@ -1,0 +1,48 @@
+<RCC>
+  <qresource prefix="newPrefix">
+    <file>cancel.png</file>
+    <file>speaker.png</file>
+    <file>ram.png</file>
+    <file>processor.png</file>
+    <file>treasure-map.png</file>
+    <file>location.png</file>
+    <file>denso_logo.png</file>
+    <file>up-and-down-arrow.png</file>
+    <file>up-and-down-arrow.png</file>
+    <file>arrow-turn.png</file>
+    <file>arrow-up.png</file>
+    <file>arrow-down.png</file>
+    <file>arrow-right.png</file>
+    <file>arrow-left.png</file>
+    <file>arrow-up.png</file>
+    <file>h5.png</file>
+    <file>hh3.png</file>
+    <file>icons8-left-100.png</file>
+    <file>icons8-right-100.png</file>
+    <file>icons8-control-64.png</file>
+    <file>icons8-conveyor-32.png</file>
+    <file>rtc.png</file>
+    <file>icons8-drop-down-100.png</file>
+    <file>icons8-up-100.png</file>
+    <file>icons8-left-50.png</file>
+    <file>icons8-right-50.png</file>
+    <file>car2.png</file>
+    <file>icons8-survey-96.png</file>
+    <file>icons8-survey-16.png</file>
+    <file>icons8-info-96.png</file>
+    <file>icons8-setting-50.png</file>
+    <file>icons8-home-50.png</file>
+    <file>icons8-control-50.png</file>
+    <file>icons8-alarm-64.png</file>
+    <file>prev.png</file>
+    <file>next.png</file>
+    <file>bg.jpg</file>
+  </qresource>
+  <qresource prefix="newPrefix"/>
+  <qresource prefix="newPrefix">
+    <file>arrow-right.png</file>
+    <file>arrow-left.png</file>
+    <file>arrow-down.png</file>
+    <file>arrow-up.png</file>
+  </qresource>
+</RCC>

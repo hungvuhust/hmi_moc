@@ -1,0 +1,21 @@
+<RCC>
+    <qresource prefix="/">
+        <file>qml/hmi.qml</file>
+        <file>qml/Header.qml</file>
+        <file>qml/HomePage.qml</file>
+        <file>qml/ManualPage.qml</file>
+        <file>qml/SettingsPage.qml</file>
+        <file>qml/MapPanel.qml</file>
+        <file>qml/InfoPage.qml</file>
+        <file>qml/NavigationBar.qml</file>
+        <file>qml/FontAwesome.qml</file>
+
+        <file>qml/amr_hmi_5inch.qml</file>
+    </qresource>
+    <qresource prefix="/newPrefix">
+        <file alias="rtc.png">qml/icon/rtc.png</file>
+    </qresource>
+    <qresource prefix="/fonts">
+        <file alias="fontawesome-solid.ttf">qml/fonts/fontawesome-solid.ttf</file>
+    </qresource>
+</RCC>
