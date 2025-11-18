@@ -27,6 +27,13 @@ void RosClient::init_subscribers() {
                                   [this](const StateAGV::SharedPtr msg) {
                                     last_state_agv_ = *msg;
                                   });
+
+  sub_plc_state_ =
+    create_subscription<PlcState>(kPLCStateTopic,
+                                  10,
+                                  [this](const PlcState::SharedPtr msg) {
+                                    last_plc_state_ = *msg;
+                                  });
 }
 
 void RosClient::init_clients() {
@@ -35,6 +42,8 @@ void RosClient::init_clients() {
     create_client<Trigger>(kServiceStartAutomaticMode);
   client_add_tag_relocation_ = create_client<Trigger>(kAddTagRelocationService);
   client_relocation_         = create_client<Trigger>(kRelocationService);
+  client_load_map_    = create_client<LoadMap>(kStartLocalizationServiceName);
+  client_switch_idle_ = create_client<Trigger>(kSwitchIdleServiceName);
 }
 
 StateAGV RosClient::getStateAGV() const {
@@ -170,27 +179,67 @@ std::string RosClient::getReturnMessageOfService() const {
 
 void RosClient::setSelectMap(const std::string& map_name) {
   return_message_of_service_ = "";
-  if (client_load_map_ and map_name != "") {
-    // Send sync request to load map
-    if (!client_load_map_->wait_for_service(std::chrono::seconds(2))) {
-      if (!rclcpp::ok()) {
-        RCLCPP_ERROR(this->get_logger(),
-                     "Interrupted while waiting for service");
-        return_message_of_service_ = "Interrupted while waiting for service";
-        return;
+  if (switch_idle()) {
+    if (client_load_map_) {
+      if (map_name != "") {
+        // Send sync request to load map
+        if (!client_load_map_->wait_for_service(std::chrono::seconds(2))) {
+          if (!rclcpp::ok()) {
+            RCLCPP_ERROR(this->get_logger(),
+                         "Interrupted while waiting for service");
+            return_message_of_service_ =
+              "Interrupted while waiting for service";
+            return;
+          }
+          RCLCPP_INFO(this->get_logger(),
+                      "Service not available, waiting again...");
+          return_message_of_service_ =
+            "Service not available, waiting again...";
+          return;
+        }
+
+        auto request      = std::make_shared<LoadMap::Request>();
+        request->map_name = map_name;
+        auto response     = client_load_map_->async_send_request(request).get();
+        if (response->status.code !=
+            cartographer_ros_msgs::msg::StatusCode::OK) {
+          RCLCPP_ERROR(this->get_logger(), "Failed to load map");
+          return_message_of_service_ = response->status.message;
+        } else {
+          RCLCPP_INFO(this->get_logger(), "Loaded map");
+          return_message_of_service_ = response->status.message;
+        }
+      } else {
+        RCLCPP_ERROR(this->get_logger(), "Map name is empty");
+        return_message_of_service_ = "Map name is empty";
       }
-      RCLCPP_INFO(this->get_logger(),
-                  "Service not available, waiting again...");
+    } else {
+      RCLCPP_ERROR(this->get_logger(), "Load map service not available");
+      return_message_of_service_ = "Load map service not available";
     }
-  }
-  auto request      = std::make_shared<LoadMap::Request>();
-  request->map_name = map_name;
-  auto response     = client_load_map_->async_send_request(request).get();
-  if (response->status.code != cartographer_ros_msgs::msg::StatusCode::OK) {
-    RCLCPP_ERROR(this->get_logger(), "Failed to load map");
-    return_message_of_service_ = response->status.message;
   } else {
-    RCLCPP_INFO(this->get_logger(), "Loaded map");
-    return_message_of_service_ = "Loaded map successfully";
+    RCLCPP_ERROR(this->get_logger(), "Failed to switch idle");
+    return_message_of_service_ = "Failed to switch idle";
   }
+}
+
+bool RosClient::switch_idle() {
+  if (client_switch_idle_) {
+    auto request  = std::make_shared<Trigger::Request>();
+    auto response = client_switch_idle_->async_send_request(request).get();
+    if (!response->success) {
+      RCLCPP_ERROR(this->get_logger(), "Failed to switch idle");
+      return false;
+    } else {
+      RCLCPP_INFO(this->get_logger(), "Switched idle");
+      return true;
+    }
+  } else {
+    RCLCPP_ERROR(this->get_logger(), "Switch idle service not available");
+    return false;
+  }
+}
+
+PlcState RosClient::getPLCState() const {
+  return last_plc_state_;
 }

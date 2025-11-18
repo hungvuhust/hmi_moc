@@ -85,6 +85,7 @@ ApplicationWindow {
                 motorRightError: robotData.motorRightError
                 lidarFrontError: robotData.lidarFrontError
                 lidarRearError: robotData.lidarRearError
+                bumperError: robotData.bumperError
                 
                 // Button signals
                 onStartClicked: {
@@ -134,6 +135,12 @@ ApplicationWindow {
                 originX: robotData.originX
                 originY: robotData.originY
                 originTheta: robotData.originTheta
+                
+                onMapInfoRequested: function(mapName) {
+                    if (robotData && typeof robotData.updateMapInfo === "function") {
+                        robotData.updateMapInfo(mapName)
+                    }
+                }
                 
                 onMapSelected: function(mapName) {
                     if (robotData && typeof robotData.selectMap === "function") {

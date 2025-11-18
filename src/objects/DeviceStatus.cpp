@@ -6,11 +6,12 @@
 #include <QDebug>
 #include <QElapsedTimer>
 #include <QRegExp>
+#include <QHostAddress>
 #include <ctime>
 
 DeviceStatus::DeviceStatus(QObject* parent)
   : QObject(parent), m_startTime(QDateTime::currentMSecsSinceEpoch()) {
-  // Create and setup timer
+  // Create and setup timer for system data
   m_updateTimer = new QTimer(this);
   connect(m_updateTimer,
           &QTimer::timeout,
@@ -395,4 +396,57 @@ void DeviceStatus::setVolume(double volume) {
   }
 
   qDebug() << "Failed to set system volume";
+}
+
+void DeviceStatus::refreshNetworkInfo() {
+  qDebug() << "DeviceStatus::refreshNetworkInfo - Scanning network interfaces";
+  readLanIpAddresses();
+}
+
+void DeviceStatus::readLanIpAddresses() {
+  QStringList ipAddresses;
+
+  // Get all network interfaces
+  QList<QNetworkInterface> interfaces = QNetworkInterface::allInterfaces();
+
+  for (const QNetworkInterface& interface : interfaces) {
+    // Skip loopback and down interfaces
+    if (interface.flags().testFlag(QNetworkInterface::IsLoopBack) ||
+        !interface.flags().testFlag(QNetworkInterface::IsUp)) {
+      continue;
+    }
+
+    // Look for ethernet (eth, enp) or wireless (wlan, wlp) interfaces
+    QString ifaceName = interface.name();
+    if (ifaceName.startsWith("eth") || ifaceName.startsWith("enp") ||
+        ifaceName.startsWith("wlan") || ifaceName.startsWith("wlp")) {
+      // Get all addresses for this interface
+      QList<QNetworkAddressEntry> entries = interface.addressEntries();
+      for (const QNetworkAddressEntry& entry : entries) {
+        QHostAddress addr = entry.ip();
+        // Only IPv4 addresses
+        if (addr.protocol() == QAbstractSocket::IPv4Protocol) {
+          QString ipStr =
+            QString("%1 (%2)").arg(addr.toString()).arg(ifaceName);
+          ipAddresses.append(ipStr);
+          qDebug() << "Found LAN IP:" << addr.toString()
+                   << "on interface:" << ifaceName;
+        }
+      }
+    }
+  }
+
+  // If no suitable interface found, add "N/A"
+  if (ipAddresses.isEmpty()) {
+    ipAddresses.append("N/A");
+  }
+
+  setLanIpAddresses(ipAddresses);
+}
+
+void DeviceStatus::setLanIpAddresses(const QStringList& value) {
+  if (m_lanIpAddresses == value)
+    return;
+  m_lanIpAddresses = value;
+  emit lanIpAddressesChanged();
 }

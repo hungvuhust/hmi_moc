@@ -16,6 +16,7 @@
 #include <rtcrobot_map_manager/srv/load_map.hpp>
 #include <cartographer_ros_msgs/msg/status_code.hpp>
 #include <cartographer_ros_msgs/msg/status_response.hpp>
+#include <rtcrobot_plc_3u/msg/plc_state.hpp>
 
 using std_srvs::srv::Trigger;
 
@@ -24,14 +25,15 @@ constexpr char kCmdVelTopic[]                  = "/cmd_vel_hmi";
 constexpr char kServiceStartAutomaticMode[]    = "/agv/mode/start_automatic";
 constexpr char kAddTagRelocationService[]      = "/add_tag_relocation";
 constexpr char kRelocationService[]            = "/relocation";
-constexpr char kLoadMapService[]               = "/load_map";
 constexpr char kStartLocalizationServiceName[] = "/start_localization";
+constexpr char kSwitchIdleServiceName[]        = "/switch_idle";
+constexpr char kPLCStateTopic[]                = "/plc/state";
 
 // TODO: Bạn cần sửa StateAGV type phù hợp với topic /agv/local/state
 using StateAGV = rtcrobot_state_server::msg::State;
 using Twist    = geometry_msgs::msg::Twist;
 using LoadMap  = rtcrobot_map_manager::srv::LoadMap;
-
+using PlcState = rtcrobot_plc_3u::msg::PlcState;
 class RosClient : public rclcpp::Node, public rtcrobot_core::NodeCore {
 public:
   RosClient();
@@ -48,6 +50,8 @@ public:
   void setReset();
   void setMaxVelocity(double max_velocity);
 
+  PlcState getPLCState() const;
+
   std::string getReturnMessageOfService() const;
 
 private:
@@ -55,16 +59,21 @@ private:
   void init_subscribers();
   void init_clients();
 
+  bool switch_idle();
+
 private:
   rclcpp::Client<Trigger>::SharedPtr client_start_automatic_mode_{nullptr};
   rclcpp::Client<Trigger>::SharedPtr client_add_tag_relocation_{nullptr};
   rclcpp::Client<Trigger>::SharedPtr client_relocation_{nullptr};
+  rclcpp::Client<Trigger>::SharedPtr client_switch_idle_{nullptr};
   rclcpp::Client<LoadMap>::SharedPtr client_load_map_{nullptr};
 
   rclcpp::Subscription<StateAGV>::SharedPtr sub_state_;
+  rclcpp::Subscription<PlcState>::SharedPtr sub_plc_state_;
   rclcpp::Publisher<Twist>::SharedPtr       pub_cmd_vel_;
   StateAGV                                  last_state_agv_;
   double                                    max_linear_velocity_ = 0.5;
+  PlcState                                  last_plc_state_;
 
   std::string return_message_of_service_{""};
 };

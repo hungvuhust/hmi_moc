@@ -7,6 +7,7 @@ Item {
     
     signal mapSelected(string mapName)
     signal addTagClicked()
+    signal mapInfoRequested(string mapName)
     
     // Properties để nhận dữ liệu từ C++ backend
     property var mapList: []
@@ -99,6 +100,29 @@ Item {
                                 radius: 8
                                 border.color: currentMapName === modelData ? "#3b82f6" : "#e5e7eb"
                                 border.width: currentMapName === modelData ? 2 : 1
+                                
+                                property string mapName: modelData
+                                
+                                MouseArea {
+                                    anchors.fill: parent
+                                    hoverEnabled: true
+                                    cursorShape: Qt.PointingHandCursor
+                                    
+                                    onEntered: {
+                                        if (currentMapName !== mapName) {
+                                            parent.color = "#f3f4f6"
+                                        }
+                                    }
+                                    
+                                    onExited: {
+                                        parent.color = currentMapName === mapName ? "#eff6ff" : "#ffffff"
+                                    }
+                                    
+                                    onClicked: {
+                                        // Select map and request info update
+                                        root.mapInfoRequested(mapName)
+                                    }
+                                }
 
                                 RowLayout {
                                     anchors.fill: parent
@@ -109,24 +133,25 @@ Item {
                                         Layout.preferredWidth: 8
                                         Layout.preferredHeight: 8
                                         radius: 4
-                                        color: currentMapName === modelData ? "#3b82f6" : "transparent"
+                                        color: currentMapName === mapName ? "#3b82f6" : "transparent"
                                     }
 
                                     Text {
                                         Layout.fillWidth: true
-                                        text: modelData
+                                        text: mapName
                                         font.pixelSize: 16
-                                        font.bold: currentMapName === modelData
-                                        color: currentMapName === modelData ? "#1e40af" : "#374151"
+                                        font.bold: currentMapName === mapName
+                                        color: currentMapName === mapName ? "#1e40af" : "#374151"
                                         verticalAlignment: Text.AlignVCenter
                                     }
 
                                     Button {
-                                        Layout.preferredWidth: 80
+                                        Layout.preferredWidth: 100
                                         Layout.preferredHeight: 36
-                                        text: "Chọn"
-                                        font.pixelSize: 14
+                                        text: "Open Map"
+                                        font.pixelSize: 13
                                         font.bold: true
+                                        visible: currentMapName === mapName
 
                                         background: Rectangle {
                                             radius: 6
@@ -135,17 +160,27 @@ Item {
                                             border.width: 1
                                         }
 
-                                        contentItem: Text {
-                                            text: parent.text
-                                            font: parent.font
-                                            color: "white"
-                                            horizontalAlignment: Text.AlignHCenter
-                                            verticalAlignment: Text.AlignVCenter
+                                        contentItem: RowLayout {
+                                            spacing: 6
+                                            anchors.centerIn: parent
+                                            
+                                            FontAwesome {
+                                                icon: "folder-open"
+                                                size: 14
+                                                color: "white"
+                                            }
+                                            
+                                            Text {
+                                                text: "Open"
+                                                font: parent.parent.font
+                                                color: "white"
+                                                horizontalAlignment: Text.AlignHCenter
+                                                verticalAlignment: Text.AlignVCenter
+                                            }
                                         }
 
                                         onClicked: {
-                                            currentMapName = modelData
-                                            root.mapSelected(modelData)
+                                            root.mapSelected(mapName)
                                         }
                                     }
                                 }

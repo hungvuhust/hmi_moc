@@ -54,6 +54,7 @@ class RobotData : public QObject {
     bool lidarFrontError READ lidarFrontError NOTIFY lidarFrontErrorChanged)
   Q_PROPERTY(
     bool lidarRearError READ lidarRearError NOTIFY lidarRearErrorChanged)
+  Q_PROPERTY(bool bumperError READ bumperError NOTIFY bumperErrorChanged)
 
   // Map Panel properties
   Q_PROPERTY(QStringList mapList READ mapList NOTIFY mapListChanged)
@@ -140,6 +141,9 @@ public:
   bool lidarRearError() const {
     return m_lidarRearError;
   }
+  bool bumperError() const {
+    return m_bumperError;
+  }
 
   // Map Panel getters
   QStringList mapList() const {
@@ -187,6 +191,7 @@ public:
   void setMotorRightError(bool value);
   void setLidarFrontError(bool value);
   void setLidarRearError(bool value);
+  void setBumperError(bool value);
   void setMapList(const QStringList& value);
   void setCurrentMapName(const QString& value);
   void setOriginX(double value);
@@ -203,6 +208,7 @@ public:
   Q_INVOKABLE void stop();
   Q_INVOKABLE void relocation();
   Q_INVOKABLE void selectMap(const QString& mapName);
+  Q_INVOKABLE void updateMapInfo(const QString& mapName);
   Q_INVOKABLE void addTag();
   Q_INVOKABLE void reset();
   Q_INVOKABLE void clearLog();
@@ -234,6 +240,7 @@ signals:
   void motorRightErrorChanged();
   void lidarFrontErrorChanged();
   void lidarRearErrorChanged();
+  void bumperErrorChanged();
 
   // Map Panel signals
   void mapListChanged();
@@ -280,13 +287,16 @@ private:
   bool m_motorRightError = false;
   bool m_lidarFrontError = false;
   bool m_lidarRearError  = false;
+  bool m_bumperError     = false;
 
   // Map Panel data
-  QStringList m_mapList;
-  QString     m_currentMapName;
-  double      m_originX     = 0.0;
-  double      m_originY     = 0.0;
-  double      m_originTheta = 0.0;
+
+  QList<MapInfo> m_mapInfoList;
+  QStringList    m_mapList;
+  QString        m_currentMapName;
+  double         m_originX     = 0.0;
+  double         m_originY     = 0.0;
+  double         m_originTheta = 0.0;
 
   // Info Page data
   QStringList m_logDateArray;

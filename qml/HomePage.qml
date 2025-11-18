@@ -31,6 +31,7 @@ Item {
     property bool motorRightError: false
     property bool lidarFrontError: false
     property bool lidarRearError: false
+    property bool bumperError: false
 
     RowLayout {
         anchors.fill: parent
@@ -439,6 +440,7 @@ Item {
                     property bool _motorRightError: root.motorRightError
                     property bool _lidarFrontError: root.lidarFrontError
                     property bool _lidarRearError: root.lidarRearError
+                    property bool _bumperError: root.bumperError
 
                     on_EmgFrontErrorChanged: requestPaint()
                     on_EmgRearErrorChanged: requestPaint()
@@ -446,6 +448,7 @@ Item {
                     on_MotorRightErrorChanged: requestPaint()
                     on_LidarFrontErrorChanged: requestPaint()
                     on_LidarRearErrorChanged: requestPaint()
+                    on_BumperErrorChanged: requestPaint()
 
                     onPaint: {
                         var ctx = getContext("2d")
@@ -482,6 +485,33 @@ Item {
                         ctx.closePath()
                         ctx.fill()
                         ctx.stroke()
+
+                        // Bumper Frame (bao quanh robot body)
+                        var bumperPadding = 12
+                        var bumperRadius = radius + 8
+                        var bumperX = bodyX - bumperPadding
+                        var bumperY = bodyY - bumperPadding
+                        var bumperWidth = bodyWidth + bumperPadding * 2
+                        var bumperHeight = bodyHeight + bumperPadding * 2
+                        
+                        ctx.strokeStyle = bumperError ? "#ef4444" : "#4fce64"
+                        ctx.lineWidth = bumperError ? 5 : 4
+                        ctx.setLineDash([])
+                        
+                        ctx.beginPath()
+                        ctx.moveTo(bumperX + bumperRadius, bumperY)
+                        ctx.lineTo(bumperX + bumperWidth - bumperRadius, bumperY)
+                        ctx.quadraticCurveTo(bumperX + bumperWidth, bumperY, bumperX + bumperWidth, bumperY + bumperRadius)
+                        ctx.lineTo(bumperX + bumperWidth, bumperY + bumperHeight - bumperRadius)
+                        ctx.quadraticCurveTo(bumperX + bumperWidth, bumperY + bumperHeight, bumperX + bumperWidth - bumperRadius, bumperY + bumperHeight)
+                        ctx.lineTo(bumperX + bumperRadius, bumperY + bumperHeight)
+                        ctx.quadraticCurveTo(bumperX, bumperY + bumperHeight, bumperX, bumperY + bumperHeight - bumperRadius)
+                        ctx.lineTo(bumperX, bumperY + bumperRadius)
+                        ctx.quadraticCurveTo(bumperX, bumperY, bumperX + bumperRadius, bumperY)
+                        ctx.closePath()
+                        ctx.stroke()
+                        
+
 
                         // EMG Button 1 (front center - red circle)
                         var emgRadius = 18

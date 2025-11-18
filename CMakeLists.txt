@@ -12,7 +12,7 @@ find_package(mrpt-slam REQUIRED)
 find_package(mrpt-tclap REQUIRED)
 find_package(mrpt-topography REQUIRED)
 
-find_package(Qt5 COMPONENTS Core Gui Quick Qml QuickControls2 REQUIRED)
+find_package(Qt5 COMPONENTS Core Gui Quick Qml QuickControls2 Network REQUIRED)
 set(THIS_PACKAGE_DEPENDENCIES 
     rclcpp
     std_msgs
@@ -27,6 +27,7 @@ set(THIS_PACKAGE_DEPENDENCIES
 
     rtcrobot_state_server
     rtcrobot_relocation
+    rtcrobot_plc_3u
     rtcrobot_map_manager
     cartographer_ros_msgs
 )
@@ -64,6 +65,7 @@ target_link_libraries(qml_ros2_app
     Qt5::Quick
     Qt5::Qml
     Qt5::QuickControls2
+    Qt5::Network
     ${PQXX_LIBRARIES}
     Drogon::Drogon
 

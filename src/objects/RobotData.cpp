@@ -135,6 +135,13 @@ void RobotData::setLidarRearError(bool value) {
   emit lidarRearErrorChanged();
 }
 
+void RobotData::setBumperError(bool value) {
+  if (m_bumperError == value)
+    return;
+  m_bumperError = value;
+  emit bumperErrorChanged();
+}
+
 // Map Panel setters
 void RobotData::setMapList(const QStringList& value) {
   if (m_mapList == value)
@@ -279,6 +286,25 @@ void RobotData::relocation() {
   }
 }
 
+void RobotData::updateMapInfo(const QString& mapName) {
+  qDebug() << "RobotData::updateMapInfo - Map:" << mapName;
+
+  // Find map in mapInfoList and update origin properties
+  for (const auto& mapInfo : m_mapInfoList) {
+    if (mapInfo.name == mapName) {
+      setOriginX(mapInfo.originX);
+      setOriginY(mapInfo.originY);
+      setOriginTheta(mapInfo.originTheta);
+      setCurrentMapName(mapName);
+      qDebug() << "Updated origin for map:" << mapName
+               << "X:" << mapInfo.originX << "Y:" << mapInfo.originY
+               << "Theta:" << mapInfo.originTheta;
+      return;
+    }
+  }
+  qDebug() << "Map not found in mapInfoList:" << mapName;
+}
+
 void RobotData::selectMap(const QString& mapName) {
   qDebug() << "RobotData::selectMap - Map:" << mapName;
 
@@ -288,13 +314,17 @@ void RobotData::selectMap(const QString& mapName) {
       m_rosClient->setSelectMap(mapName.toStdString());
     }
     // Wait for service response then show notification
-    QTimer::singleShot(500, [this]() {
+    QTimer::singleShot(500, [this, mapName]() {
       std::string msg = m_rosClient->getReturnMessageOfService();
       if (!msg.empty()) {
         bool isSuccess = msg.find("success") != std::string::npos ||
-                         msg.find("Loaded") != std::string::npos;
+                         msg.find("Started") != std::string::npos;
         emit showNotification(QString::fromStdString(msg),
                               isSuccess ? "success" : "error");
+        // If success, update current map name
+        if (isSuccess) {
+          setCurrentMapName(mapName);
+        }
       }
     });
   } else {
@@ -402,6 +432,14 @@ void RobotData::updateStateData() {
         QString::fromStdString(m_rosClient->getStateAGV().parent_state.empty()
                                  ? m_rosClient->getStateAGV().state
                                  : m_rosClient->getStateAGV().parent_state));
+
+      //  Error check
+      PlcState plcState = m_rosClient->getPLCState();
+      this->setEmgFrontError(!plcState.emergency_stop_front);
+      this->setEmgRearError(!plcState.emergency_stop_rear);
+      this->setMotorLeftError(plcState.motor_left_error);
+      this->setMotorRightError(plcState.motor_right_error);
+      this->setBumperError(!plcState.bumpper);
     }
   }
 }
@@ -450,6 +488,12 @@ void RobotData::getAllMaps() {
     for (const auto& map : maps) {
       qDebug() << "Map:" << QString::fromStdString(map.getValueOfName());
       m_mapList.append(QString::fromStdString(map.getValueOfName()));
+      MapInfo mapInfo;
+      mapInfo.name        = QString::fromStdString(map.getValueOfName());
+      mapInfo.originX     = static_cast<double>(map.getValueOfX());
+      mapInfo.originY     = static_cast<double>(map.getValueOfY());
+      mapInfo.originTheta = static_cast<double>(map.getValueOfTheta());
+      m_mapInfoList.append(mapInfo);
     }
   }
 }

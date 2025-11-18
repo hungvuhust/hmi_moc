@@ -10,6 +10,8 @@ Item {
     Component.onCompleted: {
         if (typeof deviceStatus !== "undefined" && deviceStatus) {
             volumeSlider.value = deviceStatus.volume
+            // Refresh network info when page loads
+            deviceStatus.refreshNetworkInfo()
         }
         if (typeof robotData !== "undefined" && robotData) {
             velocitySlider.value = robotData.maxVelocity
@@ -366,75 +368,165 @@ Item {
                     }
                 }
 
-                // Table Content
-                ScrollView {
+                // Network Info Display
+                ColumnLayout {
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    clip: true
+                    spacing: 12
 
-                    ColumnLayout {
-                        width: parent.width
-                        spacing: 8
+                    // Title Row
+                    RowLayout {
+                        Layout.fillWidth: true
+                        spacing: 12
 
-                        Repeater {
-                            model: [
-                                { interface: "eth0", ip: "192.168.1.100", status: "Connected" },
-                                { interface: "wlan0", ip: "192.168.1.101", status: "Connected" },
-                                { interface: "lo", ip: "127.0.0.1", status: "Active" },
-                                { interface: "docker0", ip: "172.17.0.1", status: "Active" }
-                            ]
+                        Rectangle {
+                            width: 36
+                            height: 36
+                            radius: 8
+                            color: "#dbeafe"
+                            
+                            FontAwesome {
+                                anchors.centerIn: parent
+                                icon: "network-wired"
+                                size: 20
+                                color: "#2563eb"
+                            }
+                        }
 
-                            Rectangle {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: 50
-                                color: index % 2 === 0 ? "#ffffff" : "#f9fafb"
-                                radius: 6
-                                border.color: "#e5e7eb"
-                                border.width: 1
+                        Text {
+                            Layout.fillWidth: true
+                            text: "Địa chỉ IP LAN"
+                            font.pixelSize: 18
+                            font.bold: true
+                            color: "#1f2937"
+                        }
 
-                                RowLayout {
-                                    anchors.fill: parent
-                                    anchors.margins: 12
-                                    spacing: 8
+                        Button {
+                            Layout.preferredWidth: 100
+                            Layout.preferredHeight: 36
+                            text: "Refresh"
+                            font.pixelSize: 13
+                            
+                            background: Rectangle {
+                                radius: 8
+                                color: parent.pressed ? "#1d4ed8" : (parent.hovered ? "#3b82f6" : "#2563eb")
+                            }
+                            
+                            contentItem: RowLayout {
+                                spacing: 6
+                                anchors.centerIn: parent
+                                
+                                FontAwesome {
+                                    icon: "rotate"
+                                    size: 14
+                                    color: "white"
+                                }
+                                
+                                Text {
+                                    text: "Refresh"
+                                    font.pixelSize: 13
+                                    font.bold: true
+                                    color: "white"
+                                }
+                            }
+                            
+                            onClicked: {
+                                if (typeof deviceStatus !== "undefined" && deviceStatus) {
+                                    deviceStatus.refreshNetworkInfo()
+                                }
+                            }
+                        }
+                    }
 
-                                    Rectangle {
-                                        Layout.preferredWidth: 8
-                                        Layout.preferredHeight: 8
-                                        radius: 4
-                                        color: modelData.status === "Connected" ? "#10b981" : "#6b7280"
-                                    }
+                    // IP List
+                    ScrollView {
+                        Layout.fillWidth: true
+                        Layout.fillHeight: true
+                        clip: true
 
-                                    Text {
-                                        Layout.preferredWidth: 100
-                                        text: modelData.interface
-                                        font.pixelSize: 14
-                                        font.bold: true
-                                        color: "#1f2937"
-                                    }
+                        ColumnLayout {
+                            width: parent.width
+                            spacing: 8
 
-                                    Text {
-                                        Layout.fillWidth: true
-                                        text: modelData.ip
-                                        font.pixelSize: 14
-                                        color: "#374151"
-                                    }
+                            Repeater {
+                                model: typeof deviceStatus !== "undefined" && deviceStatus ? deviceStatus.lanIpAddresses : ["N/A"]
 
-                                    Rectangle {
-                                        Layout.preferredWidth: 80
-                                        Layout.preferredHeight: 24
-                                        radius: 12
-                                        color: modelData.status === "Connected" ? "#d1fae5" : "#f3f4f6"
-                                        
+                                Rectangle {
+                                    Layout.fillWidth: true
+                                    Layout.preferredHeight: 60
+                                    color: "#ffffff"
+                                    radius: 8
+                                    border.color: "#e5e7eb"
+                                    border.width: 1
+
+                                    RowLayout {
+                                        anchors.fill: parent
+                                        anchors.margins: 15
+                                        spacing: 12
+
+                                        Rectangle {
+                                            width: 8
+                                            height: 8
+                                            radius: 4
+                                            color: modelData !== "N/A" ? "#10b981" : "#ef4444"
+                                        }
+
                                         Text {
-                                            anchors.centerIn: parent
-                                            text: modelData.status
-                                            font.pixelSize: 11
+                                            Layout.fillWidth: true
+                                            text: modelData
+                                            font.pixelSize: 16
                                             font.bold: true
-                                            color: modelData.status === "Connected" ? "#059669" : "#6b7280"
+                                            font.family: "monospace"
+                                            color: "#1f2937"
+                                        }
+
+                                        Rectangle {
+                                            width: 70
+                                            height: 26
+                                            radius: 6
+                                            color: modelData !== "N/A" ? "#d1fae5" : "#fee2e2"
+
+                                            Text {
+                                                anchors.centerIn: parent
+                                                text: modelData !== "N/A" ? "Active" : "N/A"
+                                                font.pixelSize: 11
+                                                font.bold: true
+                                                color: modelData !== "N/A" ? "#059669" : "#dc2626"
+                                            }
                                         }
                                     }
                                 }
                             }
+                        }
+                    }
+                }
+
+                // Additional Info
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 50
+                    color: "#f9fafb"
+                    radius: 8
+                    border.color: "#e5e7eb"
+                    border.width: 1
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 12
+                        spacing: 10
+
+                        FontAwesome {
+                            icon: "circle-info"
+                            size: 16
+                            color: "#6b7280"
+                        }
+
+                        Text {
+                            Layout.fillWidth: true
+                            text: "IP được tải khi mở trang Settings"
+                            font.pixelSize: 12
+                            color: "#6b7280"
+                            wrapMode: Text.WordWrap
                         }
                     }
                 }
