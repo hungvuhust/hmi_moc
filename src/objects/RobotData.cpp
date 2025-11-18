@@ -1,4 +1,4 @@
-#include "hmi_moc/RobotData.hpp"
+#include "rtcrobot_hmi_denso/RobotData.hpp"
 #include <QDebug>
 #include <QProcess>
 #include <QRegExp>
@@ -23,11 +23,7 @@ RobotData::RobotData(QObject* parent) : QObject(parent) {
                                     << "Log message 3";
 
   setEmgFrontError(true);
-
-
 }
-
-
 
 // Navigation setters
 void RobotData::setPosX(double value) {
@@ -202,7 +198,6 @@ void RobotData::setLogMessageArray(const QStringList& value) {
   emit logMessageArrayChanged();
 }
 
-
 void RobotData::setMaxVelocityInternal(double value) {
   if (qFuzzyCompare(m_maxVelocity, value))
     return;
@@ -217,8 +212,6 @@ void RobotData::setSpeed(double linear, double angular) {
   // TODO: Implement ROS 2 command to set robot speed
   // Example: publish to /cmd_vel topic
 }
-
-
 
 void RobotData::setMaxVelocity(double velocity) {
   qDebug() << "RobotData::setMaxVelocity - Max Velocity:" << velocity;

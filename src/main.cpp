@@ -1,8 +1,8 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
-#include "hmi_moc/RobotData.hpp"
-#include "hmi_moc/DeviceStatus.hpp"
+#include "rtcrobot_hmi_denso/RobotData.hpp"
+#include "rtcrobot_hmi_denso/DeviceStatus.hpp"
 
 int main(int argc, char* argv[]) {
   QGuiApplication       app(argc, argv);

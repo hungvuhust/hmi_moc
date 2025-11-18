@@ -5,6 +5,8 @@
 #include <QString>
 #include <QStringList>
 
+#include "rtcrobot_hmi_denso/RosClient.hpp"
+
 class RobotData : public QObject {
   Q_OBJECT
 
@@ -25,7 +27,6 @@ class RobotData : public QObject {
     QString operationMode READ operationMode NOTIFY operationModeChanged)
 
   // Settings properties
-
   Q_PROPERTY(double maxVelocity READ maxVelocity WRITE setMaxVelocityInternal
                NOTIFY maxVelocityChanged)
 

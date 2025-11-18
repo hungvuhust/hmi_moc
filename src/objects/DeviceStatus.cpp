@@ -1,4 +1,4 @@
-#include "hmi_moc/DeviceStatus.hpp"
+#include "rtcrobot_hmi_denso/DeviceStatus.hpp"
 #include <QFile>
 #include <QTextStream>
 #include <QProcess>
