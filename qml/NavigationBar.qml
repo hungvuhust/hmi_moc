@@ -15,7 +15,11 @@ Rectangle {
     }
 
     property int currentPageIndex: 0
+    property string operationMode: "AUTO"  // Operation mode from robotData
     signal pageChanged(int pageIndex, string pageName)
+    
+    // Only allow navigation when in MANUAL mode (except HOME)
+    property bool isManualMode: operationMode === "MANUAL"
 
     RowLayout {
         anchors.fill: parent
@@ -28,6 +32,8 @@ Rectangle {
             Layout.fillHeight: true
             flat: true
             text: ""
+            enabled: root.isManualMode
+            opacity: enabled ? 1.0 : 0.4
             
             contentItem: FontAwesome {
                 icon: "gamepad"
@@ -41,9 +47,14 @@ Rectangle {
             Behavior on scale {
                 NumberAnimation { duration: 150 }
             }
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
 
             background: Rectangle {
                 color: {
+                    if (!manualBtn.enabled) return "transparent"
                     if (currentPageIndex === 1) return "#fbbf24"
                     if (parent.hovered) return "#99ffffff"
                     return "transparent"
@@ -65,7 +76,9 @@ Rectangle {
                 }
             }
 
-            onClicked: root.pageChanged(1, "MANUAL")
+            onClicked: {
+                if (enabled) root.pageChanged(1, "MANUAL")
+            }
         }
 
         Button {
@@ -75,6 +88,8 @@ Rectangle {
             Layout.fillHeight: true
             flat: true
             text: ""
+            enabled: root.isManualMode
+            opacity: enabled ? 1.0 : 0.4
             
             contentItem: FontAwesome {
                 icon: "gear"
@@ -88,9 +103,14 @@ Rectangle {
             Behavior on scale {
                 NumberAnimation { duration: 150 }
             }
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
 
             background: Rectangle {
                 color: {
+                    if (!settingsBtn.enabled) return "transparent"
                     if (currentPageIndex === 2) return "#fbbf24"
                     if (parent.hovered) return "#99ffffff"
                     return "transparent"
@@ -111,7 +131,9 @@ Rectangle {
                 }
             }
 
-            onClicked: root.pageChanged(2, "SETTINGS")
+            onClicked: {
+                if (enabled) root.pageChanged(2, "SETTINGS")
+            }
         }
 
         Button {
@@ -161,12 +183,14 @@ Rectangle {
         }
 
         Button {
-            id: missionBtn
+            id: mapsBtn
             Layout.minimumWidth: 204
             Layout.maximumWidth: 204
             Layout.fillHeight: true
             flat: true
             text: ""
+            enabled: root.isManualMode
+            opacity: enabled ? 1.0 : 0.4
             
             contentItem: FontAwesome {
                 icon: "map"
@@ -175,14 +199,19 @@ Rectangle {
                 anchors.centerIn: parent
             }
             
-            scale: missionBtn.pressed ? 0.95 : (missionBtn.hovered ? 1.05 : 1.0)
+            scale: mapsBtn.pressed ? 0.95 : (mapsBtn.hovered ? 1.05 : 1.0)
             
             Behavior on scale {
                 NumberAnimation { duration: 150 }
             }
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
 
             background: Rectangle {
                 color: {
+                    if (!mapsBtn.enabled) return "transparent"
                     if (currentPageIndex === 3) return "#fbbf24"
                     if (parent.hovered) return "#99ffffff"
                     return "transparent"
@@ -203,7 +232,9 @@ Rectangle {
                 }
             }
 
-            onClicked: root.pageChanged(3, "MISSION")
+            onClicked: {
+                if (enabled) root.pageChanged(3, "MAPS")
+            }
         }
 
         Button {
@@ -213,6 +244,8 @@ Rectangle {
             Layout.fillHeight: true
             flat: true
             text: ""
+            enabled: root.isManualMode
+            opacity: enabled ? 1.0 : 0.4
             
             contentItem: FontAwesome {
                 icon: "circle-info"
@@ -226,9 +259,14 @@ Rectangle {
             Behavior on scale {
                 NumberAnimation { duration: 150 }
             }
+            
+            Behavior on opacity {
+                NumberAnimation { duration: 200 }
+            }
 
             background: Rectangle {
                 color: {
+                    if (!infoBtn.enabled) return "transparent"
                     if (currentPageIndex === 4) return "#fbbf24"
                     if (parent.hovered) return "#99ffffff"
                     return "transparent"
@@ -249,7 +287,9 @@ Rectangle {
                 }
             }
 
-            onClicked: root.pageChanged(4, "INFO")
+            onClicked: {
+                if (enabled) root.pageChanged(4, "INFO")
+            }
         }
     }
 }

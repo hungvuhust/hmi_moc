@@ -1,28 +1,23 @@
 #include "rtcrobot_hmi_denso/RobotData.hpp"
+#include <qobject.h>
 #include <QDebug>
 #include <QProcess>
 #include <QRegExp>
+#include <QThread>
 
 RobotData::RobotData(QObject* parent) : QObject(parent) {
-  // Initialize default values
-  m_mapList = QStringList() << "Map_01"
-                            << "Map_02"
-                            << "Map_03"
-                            << "Map_04";
-  m_currentMapName = "Map_01";
+  initDatabase();
+  getAllMaps();
 
-  // Initialize log arrays
-  m_logDateArray = QStringList() << "2025-01-01"
-                                 << "2025-01-02"
-                                 << "2025-01-03";
-  m_logTimeArray = QStringList() << "10:00:00"
-                                 << "11:00:00"
-                                 << "12:00:00";
-  m_logMessageArray = QStringList() << "Log message 1"
-                                    << "Log message 2"
-                                    << "Log message 3";
+  std::thread thread{[this]() { spinThread(); }};
+  thread.detach();
 
-  setEmgFrontError(true);
+  m_updateStateDataTimer = std::make_shared<QTimer>(this);
+  connect(m_updateStateDataTimer.get(),
+          &QTimer::timeout,
+          this,
+          &RobotData::updateStateData);
+  m_updateStateDataTimer->start(500);
 }
 
 // Navigation setters
@@ -209,8 +204,13 @@ void RobotData::setMaxVelocityInternal(double value) {
 void RobotData::setSpeed(double linear, double angular) {
   qDebug() << "RobotData::setSpeed - Linear:" << linear
            << "Angular:" << angular;
-  // TODO: Implement ROS 2 command to set robot speed
-  // Example: publish to /cmd_vel topic
+  std::lock_guard<std::mutex> lock(m_Mutex);
+  // Publish cmd_vel through RosClient
+  if (m_rosClient) {
+    m_rosClient->publishCmdVel(linear, angular);
+  } else {
+    qDebug() << "RosClient not initialized";
+  }
 }
 
 void RobotData::setMaxVelocity(double velocity) {
@@ -221,36 +221,114 @@ void RobotData::setMaxVelocity(double velocity) {
 
 void RobotData::start() {
   qDebug() << "RobotData::start";
-  setRobotState("RUNNING");
-  // TODO: Implement start command
+
+  if (m_rosClient) {
+    {
+      std::lock_guard<std::mutex> lock(m_Mutex);
+      m_rosClient->setStart();
+    }
+    // Wait for service response then show notification
+    QTimer::singleShot(500, [this]() {
+      std::string msg = m_rosClient->getReturnMessageOfService();
+      if (!msg.empty()) {
+        bool isSuccess = msg.find("success") != std::string::npos ||
+                         msg.find("Started") != std::string::npos;
+        emit showNotification(QString::fromStdString(msg),
+                              isSuccess ? "success" : "error");
+      }
+    });
+  } else {
+    qDebug() << "RosClient not initialized";
+    emit showNotification("RosClient not initialized", "error");
+  }
 }
 
 void RobotData::stop() {
   qDebug() << "RobotData::stop";
-  setRobotState("IDLE");
+
   // TODO: Implement stop command
+  if (m_rosClient) {
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    m_rosClient->setStop();
+  } else {
+    qDebug() << "RosClient not initialized";
+  }
 }
 
 void RobotData::relocation() {
   qDebug() << "RobotData::relocation";
-  setRobotState("RELOCATING");
-  // TODO: Implement relocation command
+
+  if (m_rosClient) {
+    {
+      std::lock_guard<std::mutex> lock(m_Mutex);
+      m_rosClient->setRelocation();
+    }
+    // Wait for service response then show notification
+    QTimer::singleShot(500, [this]() {
+      std::string msg = m_rosClient->getReturnMessageOfService();
+      if (!msg.empty()) {
+        bool isSuccess = msg.find("success") != std::string::npos ||
+                         msg.find("Successfully") != std::string::npos;
+        emit showNotification(QString::fromStdString(msg),
+                              isSuccess ? "success" : "error");
+      }
+    });
+  } else {
+    qDebug() << "RosClient not initialized";
+    emit showNotification("RosClient not initialized", "error");
+  }
 }
 
 void RobotData::selectMap(const QString& mapName) {
   qDebug() << "RobotData::selectMap - Map:" << mapName;
-  setCurrentMapName(mapName);
-  // TODO: Implement map selection
+
+  if (m_rosClient) {
+    {
+      std::lock_guard<std::mutex> lock(m_Mutex);
+      m_rosClient->setSelectMap(mapName.toStdString());
+    }
+    // Wait for service response then show notification
+    QTimer::singleShot(500, [this]() {
+      std::string msg = m_rosClient->getReturnMessageOfService();
+      if (!msg.empty()) {
+        bool isSuccess = msg.find("success") != std::string::npos ||
+                         msg.find("Loaded") != std::string::npos;
+        emit showNotification(QString::fromStdString(msg),
+                              isSuccess ? "success" : "error");
+      }
+    });
+  } else {
+    qDebug() << "RosClient not initialized";
+    emit showNotification("RosClient not initialized", "error");
+  }
 }
 
 void RobotData::addTag() {
   qDebug() << "RobotData::addTag";
-  // TODO: Implement add tag functionality
+  if (m_rosClient) {
+    m_rosClient->setAddTag();
+    // Wait a bit for service response
+    QTimer::singleShot(500, [this]() {
+      std::string msg = m_rosClient->getReturnMessageOfService();
+      if (!msg.empty()) {
+        bool isSuccess = msg.find("success") != std::string::npos ||
+                         msg.find("Added") != std::string::npos;
+        emit showNotification(QString::fromStdString(msg),
+                              isSuccess ? "success" : "error");
+      }
+    });
+  }
 }
 
 void RobotData::reset() {
   qDebug() << "RobotData::reset";
   // TODO: Implement reset functionality
+  if (m_rosClient) {
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    m_rosClient->setReset();
+  } else {
+    qDebug() << "RosClient not initialized";
+  }
 }
 
 void RobotData::clearLog() {
@@ -259,4 +337,119 @@ void RobotData::clearLog() {
   setLogTimeArray(QStringList());
   setLogMessageArray(QStringList());
   // TODO: Implement clear log functionality
+}
+
+void RobotData::onPageChanged(int pageIndex, const QString& pageName) {
+  qDebug() << "RobotData::onPageChanged - Page:" << pageIndex << pageName;
+
+  switch (pageIndex) {
+    case 0:  // HOME
+      qDebug() << "Home page opened";
+      // TODO: Handle home page logic
+      break;
+    case 1:  // MANUAL
+      qDebug() << "Manual page opened";
+      // TODO: Handle manual page logic
+      break;
+    case 2:  // SETTINGS
+      qDebug() << "Settings page opened";
+      // TODO: Handle settings page logic
+      break;
+    case 3:  // MAPS
+      qDebug() << "Maps page opened";
+      // TODO: Handle maps page logic - Load danh sách maps, refresh data, etc.
+      // Load map list
+      this->getAllMaps();
+      this->setMapList(m_mapList);
+
+      break;
+    case 4:  // INFO
+      qDebug() << "Info page opened";
+      // TODO: Handle info page logic
+      break;
+    default:
+      qDebug() << "Unknown page:" << pageIndex;
+      break;
+  }
+}
+
+int RobotData::spinThread() {
+  rclcpp::init(0, nullptr);
+  auto node            = std::make_shared<rclcpp::Node>("robot_data");
+  m_rosClient          = std::make_shared<RosClient>();
+  auto& signal_handler = rtcrobot_core::SignalHandler::getInstance();
+  int   exit_code      = signal_handler.spinWithSignalHandling(m_rosClient);
+  rclcpp::shutdown();
+  return exit_code;
+}
+
+void RobotData::updateStateData() {
+  if (m_rosClient) {
+    std::lock_guard<std::mutex> lock(m_Mutex);
+    vda5050_msgs::msg::State    state;
+    if (m_rosClient->getLatestState(state)) {
+      this->setPosX(state.agv_position.x);
+      this->setPosY(state.agv_position.y);
+      this->setTheta(state.agv_position.theta);
+      this->setSpeed(state.velocity.vx);
+      this->setMapName(QString::fromStdString(state.agv_position.map_id));
+      // m_destination       = state.destination;
+      this->setLocalizationScore(state.agv_position.localization_score);
+      this->setBatteryLevel(state.battery_state.battery_charge);
+      this->setOperationMode(QString::fromStdString(state.operating_mode));
+
+      this->setRobotState(
+        QString::fromStdString(m_rosClient->getStateAGV().parent_state.empty()
+                                 ? m_rosClient->getStateAGV().state
+                                 : m_rosClient->getStateAGV().parent_state));
+    }
+  }
+}
+
+void RobotData::initDatabase() {
+  // Khởi tạo Drogon database client
+  try {
+    // Đọc thông tin database từ model.json
+    Json::Value   config;
+    std::ifstream config_file(
+      ament_index_cpp::get_package_share_directory("rtcrobot_hmi_denso") +
+      "/models/"
+      "model.json");
+    if (config_file.is_open()) {
+      config_file >> config;
+      config_file.close();
+
+      // Tạo connection string cho Drogon
+      std::string host   = config["host"].asString();
+      int         port   = config["port"].asInt();
+      std::string dbname = config["dbname"].asString();
+      std::string user   = config["user"].asString();
+      std::string passwd = config["passwd"].asString();
+
+      std::string conn_str = "host=" + host + " port=" + std::to_string(port) +
+                             " dbname=" + dbname + " user=" + user +
+                             " password=" + passwd;
+
+      // Tạo database client
+      m_dbClient = drogon::orm::DbClient::newPgClient(conn_str, 1);
+
+      qDebug() << "Successfully connected to Drogon ORM database";
+    } else {
+      qDebug() << "Cannot read config file models/model.json";
+    }
+  } catch (const std::exception& e) {
+    qDebug() << "Error initializing database: " << e.what();
+    throw;
+  }
+}
+
+void RobotData::getAllMaps() {
+  if (m_dbClient) {
+    drogon::orm::Mapper<drogon_model::robotdb::RobotMaps> mapper(m_dbClient);
+    auto maps = mapper.findAll();
+    for (const auto& map : maps) {
+      qDebug() << "Map:" << QString::fromStdString(map.getValueOfName());
+      m_mapList.append(QString::fromStdString(map.getValueOfName()));
+    }
+  }
 }

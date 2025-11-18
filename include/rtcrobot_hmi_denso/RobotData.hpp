@@ -4,8 +4,21 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <memory>
+#include <QTimer>
+#include <mutex>
+#include "../../models/RobotMaps.h"
 
 #include "rtcrobot_hmi_denso/RosClient.hpp"
+#include <ament_index_cpp/get_package_share_directory.hpp>
+#include <fstream>
+
+struct MapInfo {
+  QString name;
+  double  originX;
+  double  originY;
+  double  originTheta;
+};
 
 class RobotData : public QObject {
   Q_OBJECT
@@ -57,6 +70,13 @@ class RobotData : public QObject {
     QStringList logTimeArray READ logTimeArray NOTIFY logTimeArrayChanged)
   Q_PROPERTY(QStringList logMessageArray READ logMessageArray NOTIFY
                logMessageArrayChanged)
+
+private:
+  int  spinThread();
+  void updateStateData();
+
+  void initDatabase();
+  void getAllMaps();
 
 public:
   explicit RobotData(QObject* parent = nullptr);
@@ -186,6 +206,7 @@ public:
   Q_INVOKABLE void addTag();
   Q_INVOKABLE void reset();
   Q_INVOKABLE void clearLog();
+  Q_INVOKABLE void onPageChanged(int pageIndex, const QString& pageName);
 
 signals:
   // Navigation signals
@@ -226,7 +247,15 @@ signals:
   void logTimeArrayChanged();
   void logMessageArrayChanged();
 
+  // Notification signal
+  void showNotification(QString message, QString type);
+
 private:
+  // Mutex for accessing data
+  std::mutex                             m_Mutex;
+  std::shared_ptr<RosClient>             m_rosClient{nullptr};
+  std::shared_ptr<drogon::orm::DbClient> m_dbClient;
+
   // Navigation data
   double  m_posX              = 0.0;
   double  m_posY              = 0.0;
@@ -263,6 +292,9 @@ private:
   QStringList m_logDateArray;
   QStringList m_logTimeArray;
   QStringList m_logMessageArray;
+
+  // Timer for updating data
+  std::shared_ptr<QTimer> m_updateStateDataTimer;
 };
 
 #endif  // ROBOT_DATA_HPP

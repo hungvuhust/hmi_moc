@@ -50,13 +50,30 @@ Rectangle {
 
         // Operation Mode Badge
         Rectangle {
-            Layout.preferredWidth: 170
+            Layout.preferredWidth: getModeBadgeWidth()
             Layout.preferredHeight: 40
             radius: 25
-            color: {
-                if (operationMode === "AUTO") return "#10b981"
-                if (operationMode === "MANUAL") return "#f59e0b"
-                return "#3b82f6"
+            color: getModeColor()
+            
+            function getModeColor() {
+                if (operationMode === "AUTOMATIC") return "#10b981"      // Green
+                if (operationMode === "SEMIAUTOMATIC") return "#3b82f6"  // Blue
+                if (operationMode === "TEACHIN") return "#8b5cf6"        // Purple
+                if (operationMode === "MANUAL") return "#f59e0b"         // Orange
+                return "#6b7280"  // Gray default
+            }
+            
+            function getModeIcon() {
+                if (operationMode === "AUTOMATIC") return "robot"
+                if (operationMode === "SEMIAUTOMATIC") return "hand-pointer"
+                if (operationMode === "TEACHIN") return "graduation-cap"
+                if (operationMode === "MANUAL") return "hand"
+                return "circle-question"
+            }
+            
+            function getModeBadgeWidth() {
+                if (operationMode === "SEMIAUTOMATIC") return 210
+                return 170
             }
             
             RowLayout {
@@ -64,14 +81,14 @@ Rectangle {
                 spacing: 10
                 
                 FontAwesome {
-                    icon: operationMode === "AUTO" ? "circle-check" : (operationMode === "MANUAL" ? "circle-stop" : "gauge")
+                    icon: parent.parent.getModeIcon()
                     size: 16
                     color: "white"
                 }
                 
                 Text {
                     text: operationMode
-                    font.pixelSize: 16
+                    font.pixelSize: 14
                     font.bold: true
                     color: "white"
                 }

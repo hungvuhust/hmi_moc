@@ -23,5 +23,13 @@ int main(int argc, char* argv[]) {
   const QUrl url(QStringLiteral("qrc:/qml/hmi.qml"));
   engine.load(url);
 
+  // Set fullscreen mode
+  if (!engine.rootObjects().isEmpty()) {
+    QObject* rootObject = engine.rootObjects().first();
+    if (rootObject) {
+      QMetaObject::invokeMethod(rootObject, "showFullScreen");
+    }
+  }
+
   return app.exec();
 }

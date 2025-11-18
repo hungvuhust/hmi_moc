@@ -1,0 +1,15 @@
+{
+    "rdbms": "postgresql",
+    "host": "127.0.0.1",
+    "port": 5432,
+    "dbname": "robotdb",
+    "user": "postgres",
+    "passwd": "rtc@123",
+    "tables": [
+        "robot_maps"
+    ],
+    "relationships": {
+        "enabled": false,
+        "items": []
+    }
+}

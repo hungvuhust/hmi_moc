@@ -8,10 +8,24 @@ Item {
     // Properties for robot control
     property real linearVelocity: 0.0  // m/s
     property real angularVelocity: 0.0  // rad/s
-    property real maxLinearVelocity: 0.4  // m/s
-    property real maxAngularVelocity: 0.4  // rad/s
+    property real maxLinearVelocity: 0.1  // m/s
+    property real maxAngularVelocity: 0.1  // rad/s
+    property bool isJoystickPressed: false  // Trạng thái joystick đang được nhấn
     
     signal velocityChanged(real linear, real angular)
+    
+    // Timer để publish velocity liên tục khi joystick đang được nhấn
+    Timer {
+        id: velocityPublishTimer
+        interval: 100  // Publish mỗi 100ms
+        repeat: true
+        running: root.isJoystickPressed
+        onTriggered: {
+            if (root.isJoystickPressed) {
+                root.velocityChanged(root.linearVelocity, root.angularVelocity)
+            }
+        }
+    }
     
     Rectangle {
         anchors.fill: parent
@@ -167,6 +181,7 @@ Item {
                             onPressed: {
                                 // Stop any ongoing animation
                                 returnToCenter.stop()
+                                root.isJoystickPressed = true
                                 updateJoystickPosition(mouseX, mouseY)
                             }
                             
@@ -177,6 +192,11 @@ Item {
                             }
                             
                             onReleased: {
+                                root.isJoystickPressed = false
+                                // Publish stop command immediately
+                                root.linearVelocity = 0.0
+                                root.angularVelocity = 0.0
+                                root.velocityChanged(0.0, 0.0)
                                 // Return to center with animation
                                 returnToCenter.start()
                             }
@@ -205,37 +225,28 @@ Item {
                                 root.linearVelocity = -normalizedLinear * root.maxLinearVelocity
                                 root.angularVelocity = -normalizedAngular * root.maxAngularVelocity
                                 
-                                root.velocityChanged(root.linearVelocity, root.angularVelocity)
+                                // Timer sẽ publish velocity liên tục
                             }
                         }
                         
                         // Return to center animation
-                        SequentialAnimation {
+                        ParallelAnimation {
                             id: returnToCenter
                             running: false
                             
-                            ParallelAnimation {
-                                NumberAnimation {
-                                    target: joystickHandle
-                                    property: "x"
-                                    to: joystickContainer.width / 2 - joystickHandle.width / 2
-                                    duration: 200
-                                    easing.type: Easing.OutCubic
-                                }
-                                NumberAnimation {
-                                    target: joystickHandle
-                                    property: "y"
-                                    to: joystickContainer.height / 2 - joystickHandle.height / 2
-                                    duration: 200
-                                    easing.type: Easing.OutCubic
-                                }
+                            NumberAnimation {
+                                target: joystickHandle
+                                property: "x"
+                                to: joystickContainer.width / 2 - joystickHandle.width / 2
+                                duration: 200
+                                easing.type: Easing.OutCubic
                             }
-                            ScriptAction {
-                                script: {
-                                    root.linearVelocity = 0.0
-                                    root.angularVelocity = 0.0
-                                    root.velocityChanged(0.0, 0.0)
-                                }
+                            NumberAnimation {
+                                target: joystickHandle
+                                property: "y"
+                                to: joystickContainer.height / 2 - joystickHandle.height / 2
+                                duration: 200
+                                easing.type: Easing.OutCubic
                             }
                         }
                         
@@ -455,9 +466,9 @@ Item {
                             id: maxLinearSlider
                             Layout.fillWidth: true
                             from: 0.1
-                            to: 0.6
+                            to: 0.3
                             value: root.maxLinearVelocity
-                            stepSize: 0.1
+                            stepSize: 0.05
                             
                             onValueChanged: {
                                 root.maxLinearVelocity = value
@@ -499,9 +510,9 @@ Item {
                             id: maxAngularSlider
                             Layout.fillWidth: true
                             from: 0.1
-                            to: 0.6
+                            to: 0.3
                             value: root.maxAngularVelocity
-                            stepSize: 0.1
+                            stepSize: 0.05
                             
                             onValueChanged: {
                                 root.maxAngularVelocity = value

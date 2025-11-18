@@ -1,20 +1,38 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.Window 2.15
 
 ApplicationWindow {
     id: window
     width: 1024
     height: 600
-    minimumWidth: 1024
-    minimumHeight: 600
-    maximumWidth: 1024
-    maximumHeight: 600
     title: "Robot HMI"
     visible: true
+    visibility: Window.FullScreen
 
     property int currentPageIndex: 0
     property string currentPageTitle: "HOME"
+    
+    // Auto return to HOME page when operation mode is not MANUAL
+    onCurrentPageIndexChanged: {
+        // If not MANUAL mode and trying to access restricted pages, return to HOME
+        if (robotData.operationMode !== "MANUAL" && currentPageIndex !== 0) {
+            currentPageIndex = 0;
+            currentPageTitle = "HOME";
+        }
+    }
+    
+    Connections {
+        target: robotData
+        function onOperationModeChanged() {
+            // Auto return to HOME when leaving MANUAL mode
+            if (robotData.operationMode !== "MANUAL" && currentPageIndex !== 0) {
+                currentPageIndex = 0;
+                currentPageTitle = "HOME";
+            }
+        }
+    }
     
 
 
@@ -148,10 +166,31 @@ ApplicationWindow {
         NavigationBar {
             id: navBar
             currentPageIndex: window.currentPageIndex
+            operationMode: robotData.operationMode
             onPageChanged: function(pageIndex, pageName) {
                 window.currentPageIndex = pageIndex;
                 window.currentPageTitle = pageName;
+                
+                // Notify RobotData about page change
+                if (robotData && typeof robotData.onPageChanged === "function") {
+                    robotData.onPageChanged(pageIndex, pageName);
+                }
             }
+        }
+    }
+    
+    // Notification overlay - OUTSIDE ColumnLayout
+    Notification {
+        id: notification
+        anchors.fill: parent
+        z: 10000
+    }
+    
+    // Connect to RobotData notification signal
+    Connections {
+        target: robotData
+        function onShowNotification(message, type) {
+            notification.show(message, type)
         }
     }
 }
