@@ -156,16 +156,6 @@ ApplicationWindow {
 
             InfoPage {
                 id: infoPage
-                onResetClicked: {
-                    if (robotData && typeof robotData.reset === "function") {
-                        robotData.reset()
-                    }
-                }
-                onClearClicked: {
-                    if (robotData && typeof robotData.clearLog === "function") {
-                        robotData.clearLog()
-                    }
-                }
             }
         }
 

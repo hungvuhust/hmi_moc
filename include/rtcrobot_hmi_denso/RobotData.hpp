@@ -4,20 +4,37 @@
 #include <QObject>
 #include <QString>
 #include <QStringList>
+#include <QVariantList>
+#include <QVariantMap>
 #include <memory>
 #include <QTimer>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
 #include <mutex>
+#include <map>
 #include "../../models/RobotMaps.h"
 
 #include "rtcrobot_hmi_denso/RosClient.hpp"
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <fstream>
 
 struct MapInfo {
   QString name;
   double  originX;
   double  originY;
   double  originTheta;
+};
+
+struct ErrorRecord {
+  QString timestamp;
+  QString errorType;
+  QString errorDescription;
+  QString errorLevel;  // "WARNING" or "FATAL"
+  QString startTime;
+  QString endTime;
+  QString status;  // "active" or "cleared"
+  int     durationSeconds;
 };
 
 class RobotData : public QObject {
@@ -71,13 +88,22 @@ class RobotData : public QObject {
     QStringList logTimeArray READ logTimeArray NOTIFY logTimeArrayChanged)
   Q_PROPERTY(QStringList logMessageArray READ logMessageArray NOTIFY
                logMessageArrayChanged)
+  Q_PROPERTY(QVariantList errorLog READ errorLog NOTIFY errorLogChanged)
 
 private:
   int  spinThread();
   void updateStateData();
 
-  void initDatabase();
-  void getAllMaps();
+  void         initDatabase();
+  void         getAllMaps();
+  void         logErrorToCSV(const QString& errorType,
+                             const QString& errorDescription,
+                             const QString& errorLevel,
+                             qint64         startTime,
+                             const QString& status,
+                             qint64         endTime = 0);
+  QVariantList readErrorCSV();
+  void         trackErrors(vda5050_msgs::msg::State& state);
 
 public:
   explicit RobotData(QObject* parent = nullptr);
@@ -172,6 +198,9 @@ public:
   QStringList logMessageArray() const {
     return m_logMessageArray;
   }
+  QVariantList errorLog() const {
+    return m_errorLog;
+  }
 
   // Setters
   void setPosX(double value);
@@ -212,6 +241,8 @@ public:
   Q_INVOKABLE void addTag();
   Q_INVOKABLE void reset();
   Q_INVOKABLE void clearLog();
+  Q_INVOKABLE void clearErrorLog();
+  Q_INVOKABLE void reloadErrorLog();
   Q_INVOKABLE void onPageChanged(int pageIndex, const QString& pageName);
 
 signals:
@@ -253,6 +284,8 @@ signals:
   void logDateArrayChanged();
   void logTimeArrayChanged();
   void logMessageArrayChanged();
+  void errorLogChanged();
+  void showClearLogConfirmation();
 
   // Notification signal
   void showNotification(QString message, QString type);
@@ -299,9 +332,19 @@ private:
   double         m_originTheta = 0.0;
 
   // Info Page data
-  QStringList m_logDateArray;
-  QStringList m_logTimeArray;
-  QStringList m_logMessageArray;
+  QStringList  m_logDateArray;
+  QStringList  m_logTimeArray;
+  QStringList  m_logMessageArray;
+  QVariantList m_errorLog;
+  QString      m_errorLogPath;
+
+  // Track active errors: error_type -> {startTime, description, level}
+  struct ActiveErrorInfo {
+    qint64  startTime;
+    QString description;
+    QString level;
+  };
+  std::map<std::string, ActiveErrorInfo> m_activeErrors;
 
   // Timer for updating data
   std::shared_ptr<QTimer> m_updateStateDataTimer;

@@ -1,173 +1,15 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-import Qt.labs.qmlmodels 1.0
+import QtQuick.Dialogs 1.3
 
 Item {
     id: root
     
-    signal resetClicked()
-    signal clearClicked()
-    
-    // Properties để nhận dữ liệu từ C++ backend (robotData)
-    property var dateArray: robotData ? robotData.logDateArray : ["14/11/25", "14/11/25", "14/11/25"]
-    property var timeArray: robotData ? robotData.logTimeArray : ["15:30:12", "15:31:02", "15:32:47"]
-    property var logArray: robotData ? robotData.logMessageArray : ["System started", "Connected to ROS 2", "Received feedback"]
-
-    // Function để tạo rows từ các mảng
-    function createRows() {
-        var rows = []
-        var maxLength = Math.max(dateArray.length, Math.max(timeArray.length, logArray.length))
-        for (var i = 0; i < maxLength; i++) {
-            rows.push({
-                "date": i < dateArray.length ? dateArray[i] : "",
-                "time": i < timeArray.length ? timeArray[i] : "",
-                "log": i < logArray.length ? logArray[i] : ""
-            })
-        }
-        return rows
-    }
-
-    // Cập nhật model khi các mảng thay đổi
-    onDateArrayChanged: if (tableModel) tableModel.rows = createRows()
-    onTimeArrayChanged: if (tableModel) tableModel.rows = createRows()
-    onLogArrayChanged: if (tableModel) tableModel.rows = createRows()
-
-    RowLayout {
+    // Error Log Table
+    Item {
         anchors.fill: parent
         anchors.margins: 10
-        spacing: 10
-
-        // Log Table
-        Item {
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-
-            // Shadow
-            Rectangle {
-                anchors.fill: parent
-                anchors.topMargin: 4
-                anchors.leftMargin: 2
-                color: "#20000000"
-                radius: 12
-                z: 0
-            }
-
-            Rectangle {
-                anchors.fill: parent
-                color: "#f9fafb"
-                radius: 12
-                border.color: "#e5e7eb"
-                border.width: 1
-                z: 1
-            }
-
-            Rectangle {
-                id: logTableContainer
-                anchors.fill: parent
-                color: "transparent"
-                z: 2
-
-            // Header row
-            Rectangle {
-                id: logHeader
-                anchors.top: logTableContainer.top
-                anchors.left: logTableContainer.left
-                anchors.right: logTableContainer.right
-                height: 36
-                color: "#f9fafb"
-                border.color: "#e5e7eb"
-
-                Row {
-                    anchors.fill: parent
-                    spacing: 0
-
-                    Rectangle {
-                        width: 140
-                        height: parent.height
-                        color: "transparent"
-                        border.color: "#e5e7eb"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Date"
-                            font.bold: true
-                            font.pixelSize: 14
-                        }
-                    }
-
-                    Rectangle {
-                        width: 100
-                        height: parent.height
-                        color: "transparent"
-                        border.color: "#e5e7eb"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "Time"
-                            font.bold: true
-                            font.pixelSize: 14
-                        }
-                    }
-
-                    Rectangle {
-                        width: parent.width - 240
-                        height: parent.height
-                        color: "transparent"
-                        border.color: "#e5e7eb"
-                        Text {
-                            anchors.centerIn: parent
-                            text: "History Log"
-                            font.bold: true
-                            font.pixelSize: 14
-                        }
-                    }
-                }
-            }
-
-            // Table model + view
-            TableView {
-                id: logView
-                anchors.top: logHeader.bottom
-                anchors.left: logTableContainer.left
-                anchors.right: logTableContainer.right
-                anchors.bottom: logTableContainer.bottom
-                clip: true
-                columnSpacing: 1
-                rowSpacing: 1
-
-                model: TableModel {
-                    id: tableModel
-                    TableModelColumn { display: "date" }
-                    TableModelColumn { display: "time" }
-                    TableModelColumn { display: "log" }
-                    rows: createRows()
-                }
-
-                columnWidthProvider: function(col) {
-                    return col === 0 ? 140 : (col === 1 ? 100 : Math.max(0, width - 241));
-                }
-
-                rowHeightProvider: function(row) { return 32; }
-
-                delegate: Rectangle {
-                    implicitWidth: 100
-                    implicitHeight: 32
-                    border.width: 1
-                    border.color: "#e5e7eb"
-                    color: (row % 2 === 0) ? "#ffffff" : "#f9fafb"
-                    Text {
-                        text: display
-                        anchors.centerIn: parent
-                    }
-                }
-            }
-            }
-        }
-
-        // Action Buttons
-        Item {
-            Layout.minimumWidth: 160
-            Layout.maximumWidth: 160
-            Layout.fillHeight: true
 
             // Shadow
             Rectangle {
@@ -189,130 +31,352 @@ Item {
             }
 
             ColumnLayout {
-                anchors.centerIn: parent
-                spacing: 20
-                width: parent.width - 20
+                anchors.fill: parent
+                anchors.margins: 20
+                spacing: 15
                 z: 2
 
-            // RESET Button
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 80
+                // Title
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 12
 
-                // Shadow
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.topMargin: 4
-                    anchors.leftMargin: 2
-                    color: "#30000000"
-                    radius: 12
-                    z: 0
-                }
-
-                Button {
-                    id: resetButton
-                    anchors.fill: parent
-                    text: "RESET"
-                    font.pixelSize: 16
-                    font.bold: true
-
-                    background: Rectangle {
-                        radius: 12
-                        color: resetButton.pressed ? "#ea580c" : (resetButton.hovered ? "#f97316" : "#fb923c")
-                        border.color: resetButton.hovered ? "#ea580c" : "transparent"
-                        border.width: 2
-
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: resetButton.pressed ? "#ea580c" : (resetButton.hovered ? "#f97316" : "#fb923c") }
-                            GradientStop { position: 1.0; color: resetButton.pressed ? "#c2410c" : (resetButton.hovered ? "#ea580c" : "#f97316") }
+                    Rectangle {
+                        width: 40
+                        height: 40
+                        radius: 8
+                        color: "#fef3c7"
+                        
+                        FontAwesome {
+                            anchors.centerIn: parent
+                            icon: "triangle-exclamation"
+                            size: 24
+                            color: "#f59e0b"
                         }
                     }
 
-                    contentItem: RowLayout {
-                        spacing: 10
-                        anchors.centerIn: parent
+                    Text {
+                        Layout.fillWidth: true
+                        text: "Error Log"
+                        font.pixelSize: 24
+                        font.bold: true
+                        color: "#1f2937"
+                    }
+                    
+                    Button {
+                        Layout.preferredWidth: 120
+                        Layout.preferredHeight: 36
+                        text: "Clear Log"
+                        font.pixelSize: 13
+                        font.bold: true
+                        
+                        background: Rectangle {
+                            radius: 8
+                            color: parent.pressed ? "#dc2626" : (parent.hovered ? "#ef4444" : "#f87171")
+                        }
+                        
+                        contentItem: RowLayout {
+                            spacing: 6
+                            anchors.centerIn: parent
+                            
+                            FontAwesome {
+                                icon: "trash"
+                                size: 14
+                                color: "white"
+                            }
+                            
+                            Text {
+                                text: "Clear Log"
+                                font.pixelSize: 13
+                                font.bold: true
+                                color: "white"
+                            }
+                        }
+                        
+                        onClicked: {
+                            clearConfirmDialog.open()
+                        }
+                    }
+                }
 
-                        FontAwesome {
-                            icon: "arrow-rotate-right"
-                            size: 20
-                            color: "white"
+                // Table Header
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    color: "#f3f4f6"
+                    radius: 8
+
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 5
+
+                        Text {
+                            Layout.preferredWidth: 130
+                            text: "Timestamp"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
                         }
 
                         Text {
-                            text: resetButton.text
-                            font: resetButton.font
-                            color: "white"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
-                        }
-                    }
-                    
-                    onClicked: {
-                        root.resetClicked()
-                    }
-                }
-            }
-
-            // CLEAR Button
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 80
-
-                // Shadow
-                Rectangle {
-                    anchors.fill: parent
-                    anchors.topMargin: 4
-                    anchors.leftMargin: 2
-                    color: "#30000000"
-                    radius: 12
-                    z: 0
-                }
-
-                Button {
-                    id: clearButton
-                    anchors.fill: parent
-                    text: "CLEAR"
-                    font.pixelSize: 16
-                    font.bold: true
-
-                    background: Rectangle {
-                        radius: 12
-                        color: clearButton.pressed ? "#dc2626" : (clearButton.hovered ? "#ef4444" : "#f87171")
-                        border.color: clearButton.hovered ? "#dc2626" : "transparent"
-                        border.width: 2
-
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: clearButton.pressed ? "#dc2626" : (clearButton.hovered ? "#ef4444" : "#f87171") }
-                            GradientStop { position: 1.0; color: clearButton.pressed ? "#991b1b" : (clearButton.hovered ? "#dc2626" : "#ef4444") }
-                        }
-                    }
-
-                    contentItem: RowLayout {
-                        spacing: 10
-                        anchors.centerIn: parent
-
-                        FontAwesome {
-                            icon: "circle-stop"
-                            size: 20
-                            color: "white"
+                            Layout.preferredWidth: 280
+                            text: "Error Type"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
                         }
 
                         Text {
-                            text: clearButton.text
-                            font: clearButton.font
-                            color: "white"
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignVCenter
+                            Layout.preferredWidth: 250
+                            text: "Description"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
+                        }
+
+                        Text {
+                            Layout.preferredWidth: 80
+                            text: "Level"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
+                        }
+
+                        Text {
+                            Layout.preferredWidth: 80
+                            text: "Duration"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
+                        }
+
+                        Text {
+                            Layout.preferredWidth: 90
+                            text: "Status"
+                            font.pixelSize: 12
+                            font.bold: true
+                            color: "#6b7280"
+                        }
+                        
+                        Item {
+                            Layout.fillWidth: true
                         }
                     }
+                }
+
+                // Table Content
+                ScrollView {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+                    clip: true
+
+                    ColumnLayout {
+                        width: parent.width
+                        spacing: 5
+
+                        Repeater {
+                            model: typeof robotData !== "undefined" && robotData ? robotData.errorLog : []
+
+                            Rectangle {
+                                Layout.fillWidth: true
+                                Layout.preferredHeight: 50
+                                radius: 6
+                                border.width: 2
+                                
+                                // Bôi đỏ nếu status = "active"
+                                color: modelData.status === "active" ? "#fee2e2" : "#ffffff"
+                                border.color: modelData.status === "active" ? "#ef4444" : "#e5e7eb"
+
+                                RowLayout {
+                                    anchors.fill: parent
+                                    anchors.margins: 10
+                                    spacing: 5
+
+                                    Text {
+                                        Layout.preferredWidth: 130
+                                        text: modelData.timestamp
+                                        font.pixelSize: 10
+                                        color: modelData.status === "active" ? "#dc2626" : "#374151"
+                                        font.bold: modelData.status === "active"
+                                        elide: Text.ElideRight
+                                        font.family: "monospace"
+                                    }
+
+                                    Text {
+                                        Layout.preferredWidth: 280
+                                        text: modelData.errorType
+                                        font.pixelSize: 10
+                                        color: modelData.status === "active" ? "#dc2626" : "#374151"
+                                        font.bold: modelData.status === "active"
+                                        elide: Text.ElideMiddle
+                                    }
+
+                                    // Scrolling Description
+                                    Item {
+                                        Layout.preferredWidth: 250
+                                        Layout.fillHeight: true
+                                        clip: true
+                                        
+                                        property bool isOverflow: descText.contentWidth > 250
+                                        
+                                        Text {
+                                            id: descText
+                                            y: parent.height / 2 - height / 2
+                                            text: modelData.errorDescription
+                                            font.pixelSize: 10
+                                            color: modelData.status === "active" ? "#dc2626" : "#374151"
+                                            font.bold: modelData.status === "active"
+                                            wrapMode: Text.NoWrap
+                                            
+                                            SequentialAnimation {
+                                                running: parent.isOverflow
+                                                loops: Animation.Infinite
+                                                
+                                                PauseAnimation { duration: 2000 }
+                                                NumberAnimation {
+                                                    target: descText
+                                                    property: "x"
+                                                    from: 0
+                                                    to: -(descText.contentWidth - 250 + 20)
+                                                    duration: descText.contentWidth * 30
+                                                    easing.type: Easing.Linear
+                                                }
+                                                PauseAnimation { duration: 1000 }
+                                                NumberAnimation {
+                                                    target: descText
+                                                    property: "x"
+                                                    to: 0
+                                                    duration: 500
+                                                    easing.type: Easing.InOutQuad
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 80
+                                        Layout.preferredHeight: 20
+                                        radius: 10
+                                        color: modelData.errorLevel === "FATAL" ? "#fee2e2" : "#fef3c7"
+                                        border.color: modelData.errorLevel === "FATAL" ? "#ef4444" : "#f59e0b"
+                                        border.width: 1
+                                        
+                                        Text {
+                                            anchors.centerIn: parent
+                                            text: modelData.errorLevel
+                                            font.pixelSize: 9
+                                            font.bold: true
+                                            color: modelData.errorLevel === "FATAL" ? "#dc2626" : "#d97706"
+                                        }
+                                    }
+
+                                    Text {
+                                        Layout.preferredWidth: 80
+                                        text: modelData.durationSeconds > 0 ? modelData.durationSeconds + "s" : "-"
+                                        font.pixelSize: 10
+                                        color: modelData.status === "active" ? "#dc2626" : "#374151"
+                                        font.bold: modelData.status === "active"
+                                        horizontalAlignment: Text.AlignRight
+                                    }
+
+                                    Rectangle {
+                                        Layout.preferredWidth: 90
+                                        Layout.preferredHeight: 24
+                                        radius: 12
+                                        color: modelData.status === "active" ? "#fee2e2" : "#d1fae5"
+                                        border.color: modelData.status === "active" ? "#ef4444" : "#10b981"
+                                        border.width: 1
+                                        
+                                        RowLayout {
+                                            anchors.centerIn: parent
+                                            spacing: 4
+                                            
+                                            Rectangle {
+                                                width: 6
+                                                height: 6
+                                                radius: 3
+                                                color: modelData.status === "active" ? "#ef4444" : "#10b981"
+                                            }
+                                            
+                                            Text {
+                                                text: modelData.status === "active" ? "Active" : "Cleared"
+                                                font.pixelSize: 10
+                                                font.bold: true
+                                                color: modelData.status === "active" ? "#dc2626" : "#059669"
+                                            }
+                                        }
+                                    }
+                                    
+                                    Item {
+                                        Layout.fillWidth: true
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                // Info text
+                Rectangle {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: 40
+                    color: "#f9fafb"
+                    radius: 8
+                    border.color: "#e5e7eb"
+                    border.width: 1
                     
-                    onClicked: {
-                        root.clearClicked()
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        spacing: 8
+                        
+                        FontAwesome {
+                            icon: "circle-info"
+                            size: 16
+                            color: "#6b7280"
+                        }
+                        
+                        Text {
+                            Layout.fillWidth: true
+                            text: {
+                                if (typeof robotData === "undefined" || !robotData) return "Lỗi đang hoạt động được highlight màu đỏ. Lỗi đã cleared hiển thị màu trắng."
+                                
+                                var allErrors = robotData.errorLog
+                                var activeCount = 0
+                                var clearedCount = 0
+                                
+                                for (var i = 0; i < allErrors.length; i++) {
+                                    if (allErrors[i].status === "active") {
+                                        activeCount++
+                                    } else {
+                                        clearedCount++
+                                    }
+                                }
+                                
+                                return "Tổng: " + allErrors.length + " lỗi | Active: " + activeCount + " | Cleared: " + clearedCount + " | Lỗi đang hoạt động được highlight màu đỏ."
+                            }
+                            font.pixelSize: 11
+                            color: "#6b7280"
+                            wrapMode: Text.WordWrap
+                        }
                     }
                 }
             }
+        }
+    
+    // Clear Log Confirmation Dialog
+    MessageDialog {
+        id: clearConfirmDialog
+        title: "Xác nhận xóa Error Log"
+        text: "Bạn có chắc chắn muốn xóa toàn bộ error log?\n\nHành động này không thể hoàn tác."
+        icon: StandardIcon.Warning
+        standardButtons: StandardButton.Yes | StandardButton.No
+        
+        onYes: {
+            if (typeof robotData !== "undefined" && robotData) {
+                robotData.clearErrorLog()
             }
         }
     }
 }
-

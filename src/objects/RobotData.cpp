@@ -4,10 +4,33 @@
 #include <QProcess>
 #include <QRegExp>
 #include <QThread>
+#include <QMap>
+#include <fstream>
+#include <algorithm>
 
 RobotData::RobotData(QObject* parent) : QObject(parent) {
   initDatabase();
   getAllMaps();
+
+  // Initialize error log path
+  QString homeDir   = QDir::homePath();
+  QString configDir = homeDir + "/.rtcrobot";
+  QDir().mkpath(configDir);
+  m_errorLogPath = configDir + "/error_log.csv";
+
+  // Create CSV file with header if doesn't exist
+  if (!QFile::exists(m_errorLogPath)) {
+    QFile file(m_errorLogPath);
+    if (file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+      QTextStream out(&file);
+      out << "timestamp,error_type,error_description,error_level,start_time,"
+             "end_time,status,duration_seconds\n";
+      file.close();
+    }
+  }
+
+  // Load existing error log
+  reloadErrorLog();
 
   std::thread thread{[this]() { spinThread(); }};
   thread.detach();
@@ -440,6 +463,9 @@ void RobotData::updateStateData() {
       this->setMotorLeftError(plcState.motor_left_error);
       this->setMotorRightError(plcState.motor_right_error);
       this->setBumperError(!plcState.bumpper);
+
+      // Track errors for logging
+      trackErrors(state);
     }
   }
 }
@@ -495,5 +521,161 @@ void RobotData::getAllMaps() {
       mapInfo.originTheta = static_cast<double>(map.getValueOfTheta());
       m_mapInfoList.append(mapInfo);
     }
+  }
+}
+
+// ==================== Error Management ====================
+
+void RobotData::trackErrors(vda5050_msgs::msg::State& state) {
+  // Collect current errors from VDA5050 state
+  std::map<std::string, std::pair<QString, QString>> currentErrors;
+  for (const auto& error : state.errors) {
+    std::string errorType    = error.error_type;
+    QString     description  = QString::fromStdString(error.error_description);
+    QString     level        = QString::fromStdString(error.error_level);
+    currentErrors[errorType] = {description, level};
+  }
+
+  // Check for NEW errors
+  for (const auto& [errorType, descLevel] : currentErrors) {
+    if (m_activeErrors.find(errorType) == m_activeErrors.end()) {
+      // New error detected
+      qint64          startTime = QDateTime::currentMSecsSinceEpoch();
+      ActiveErrorInfo info;
+      info.startTime            = startTime;
+      info.description          = descLevel.first;
+      info.level                = descLevel.second;
+      m_activeErrors[errorType] = info;
+
+      logErrorToCSV(QString::fromStdString(errorType),
+                    descLevel.first,
+                    descLevel.second,
+                    startTime,
+                    "active");
+      qDebug() << "New error detected:" << QString::fromStdString(errorType)
+               << "-" << descLevel.first;
+    }
+  }
+
+  // Check for CLEARED errors
+  std::vector<std::string> clearedErrors;
+  for (const auto& [errorType, info] : m_activeErrors) {
+    if (currentErrors.find(errorType) == currentErrors.end()) {
+      // Error was cleared
+      qint64 endTime = QDateTime::currentMSecsSinceEpoch();
+      logErrorToCSV(QString::fromStdString(errorType),
+                    info.description,
+                    info.level,
+                    info.startTime,
+                    "cleared",
+                    endTime);
+      clearedErrors.push_back(errorType);
+      qDebug() << "Error cleared:" << QString::fromStdString(errorType);
+    }
+  }
+
+  // Remove cleared errors from active map
+  for (const auto& errorType : clearedErrors) {
+    m_activeErrors.erase(errorType);
+  }
+
+  // Reload error log for UI if there were changes
+  if (!currentErrors.empty() || !clearedErrors.empty()) {
+    reloadErrorLog();
+  }
+}
+
+void RobotData::logErrorToCSV(const QString& errorType,
+                              const QString& errorDescription,
+                              const QString& errorLevel,
+                              qint64         startTime,
+                              const QString& status,
+                              qint64         endTime) {
+  QFile file(m_errorLogPath);
+  if (!file.open(QIODevice::Append | QIODevice::Text)) {
+    qDebug() << "Failed to open error log file for writing";
+    return;
+  }
+
+  QTextStream out(&file);
+
+  QString timestamp =
+    QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss");
+  QString startTimeStr =
+    QDateTime::fromMSecsSinceEpoch(startTime).toString("yyyy-MM-dd HH:mm:ss");
+  QString endTimeStr =
+    (endTime > 0)
+      ? QDateTime::fromMSecsSinceEpoch(endTime).toString("yyyy-MM-dd HH:mm:ss")
+      : "";
+  int duration = (endTime > 0) ? (endTime - startTime) / 1000 : 0;
+
+  // Escape description for CSV (replace comma with semicolon)
+  QString escapedDesc = errorDescription;
+  escapedDesc.replace(",", ";");
+
+  out << timestamp << "," << errorType << "," << escapedDesc << ","
+      << errorLevel << "," << startTimeStr << "," << endTimeStr << "," << status
+      << "," << duration << "\n";
+
+  file.close();
+}
+
+QVariantList RobotData::readErrorCSV() {
+  QVariantList errorList;
+
+  QFile file(m_errorLogPath);
+  if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+    qDebug() << "Failed to open error log file for reading";
+    return errorList;
+  }
+
+  QTextStream in(&file);
+  QString     header = in.readLine();  // Skip header
+
+  while (!in.atEnd()) {
+    QString     line  = in.readLine();
+    QStringList parts = line.split(',');
+
+    if (parts.size() >= 8) {
+      QVariantMap record;
+      record["timestamp"]        = parts[0];
+      record["errorType"]        = parts[1];
+      record["errorDescription"] = parts[2];
+      record["errorLevel"]       = parts[3];
+      record["startTime"]        = parts[4];
+      record["endTime"]          = parts[5];
+      record["status"]           = parts[6];
+      record["durationSeconds"]  = parts[7].toInt();
+
+      errorList.append(record);
+    }
+  }
+
+  file.close();
+
+  // Reverse to show newest first
+  std::reverse(errorList.begin(), errorList.end());
+
+  return errorList;
+}
+
+void RobotData::reloadErrorLog() {
+  m_errorLog = readErrorCSV();
+  emit errorLogChanged();
+}
+
+void RobotData::clearErrorLog() {
+  QFile file(m_errorLogPath);
+  if (file.open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Truncate)) {
+    QTextStream out(&file);
+    out << "timestamp,error_type,error_description,error_level,start_time,"
+           "end_time,status,duration_seconds\n";
+    file.close();
+    qDebug() << "Error log cleared";
+    reloadErrorLog();
+    emit showNotification("Error log đã được xóa", "success");
+  } else {
+    qDebug() << "Failed to clear error log";
+    emit showNotification("Không thể xóa error log", "error");
   }
 }
