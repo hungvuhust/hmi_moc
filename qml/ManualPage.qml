@@ -11,17 +11,39 @@ Item {
     property real maxLinearVelocity: 0.1  // m/s
     property real maxAngularVelocity: 0.1  // rad/s
     property bool isJoystickPressed: false  // Trạng thái joystick đang được nhấn
+    property bool isActive: false  // Nhận từ bên ngoài để biết page có đang active không
     
     signal velocityChanged(real linear, real angular)
+    
+    // Reset khi page không còn active
+    onIsActiveChanged: {
+        if (!isActive) {
+            // Dùng Qt.callLater để tránh race condition
+            Qt.callLater(function() {
+                isJoystickPressed = false
+                linearVelocity = 0.0
+                angularVelocity = 0.0
+                velocityChanged(0.0, 0.0)
+                
+                // Reset vị trí joystick về center (kiểm tra đối tượng tồn tại)
+                if (joystickHandle && joystickContainer) {
+                    joystickHandle.x = joystickContainer.width / 2 - joystickHandle.width / 2
+                    joystickHandle.y = joystickContainer.height / 2 - joystickHandle.height / 2
+                }
+            })
+        }
+    }
+    
+
     
     // Timer để publish velocity liên tục khi joystick đang được nhấn
     Timer {
         id: velocityPublishTimer
         interval: 100  // Publish mỗi 100ms
         repeat: true
-        running: root.isJoystickPressed
+        running: root.isActive && root.isJoystickPressed
         onTriggered: {
-            if (root.isJoystickPressed) {
+            if (root.isActive && root.isJoystickPressed) {
                 root.velocityChanged(root.linearVelocity, root.angularVelocity)
             }
         }
@@ -173,12 +195,14 @@ Item {
                             id: joystickMouseArea
                             anchors.fill: joystickContainer
                             z: 1
+                            enabled: root.isActive
                             
                             property real centerX: joystickContainer.width / 2
                             property real centerY: joystickContainer.height / 2
                             property real maxDistance: (joystickContainer.width - joystickHandle.width) / 2
                             
                             onPressed: {
+                                if (!root.isActive) return
                                 // Stop any ongoing animation
                                 returnToCenter.stop()
                                 root.isJoystickPressed = true
@@ -186,7 +210,7 @@ Item {
                             }
                             
                             onPositionChanged: {
-                                if (pressed) {
+                                if (pressed && root.isActive) {
                                     updateJoystickPosition(mouseX, mouseY)
                                 }
                             }
@@ -196,9 +220,11 @@ Item {
                                 // Publish stop command immediately
                                 root.linearVelocity = 0.0
                                 root.angularVelocity = 0.0
-                                root.velocityChanged(0.0, 0.0)
-                                // Return to center with animation
-                                returnToCenter.start()
+                                if (root.isActive) {
+                                    root.velocityChanged(0.0, 0.0)
+                                    // Return to center with animation
+                                    returnToCenter.start()
+                                }
                             }
                             
                             function updateJoystickPosition(x, y) {

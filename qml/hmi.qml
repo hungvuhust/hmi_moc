@@ -107,6 +107,7 @@ ApplicationWindow {
 
             ManualPage {
                 id: manualPage
+                isActive: currentPageIndex === 1
                 onVelocityChanged: function(linear, angular) {
                     if (robotData && typeof robotData.setSpeed === "function") {
                         robotData.setSpeed(linear, angular)

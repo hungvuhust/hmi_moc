@@ -8,6 +8,7 @@
 #include <QRegExp>
 #include <QHostAddress>
 #include <ctime>
+#include <unistd.h>
 
 DeviceStatus::DeviceStatus(QObject* parent)
   : QObject(parent), m_startTime(QDateTime::currentMSecsSinceEpoch()) {
@@ -263,9 +264,23 @@ void DeviceStatus::readTimeUsed() {
   setTimeUsed(timeStr);
 }
 
+QProcessEnvironment DeviceStatus::setupAudioEnvironment() {
+  // Setup environment for audio commands (needed when running as systemd
+  // service)
+  QProcessEnvironment env           = QProcessEnvironment::systemEnvironment();
+  QString             uid           = QString::number(getuid());
+  QString             xdgRuntimeDir = "/run/user/" + uid;
+  env.insert("XDG_RUNTIME_DIR", xdgRuntimeDir);
+  env.insert("PULSE_RUNTIME_PATH", xdgRuntimeDir + "/pulse");
+  return env;
+}
+
 void DeviceStatus::readSystemVolume() {
+  QProcessEnvironment env = setupAudioEnvironment();
+
   // Try amixer first (ALSA)
   QProcess process;
+  process.setProcessEnvironment(env);
   process.start("amixer",
                 QStringList() << "-D"
                               << "pulse"
@@ -289,6 +304,7 @@ void DeviceStatus::readSystemVolume() {
   }
 
   // Fallback: try pactl (PulseAudio)
+  process.setProcessEnvironment(env);
   process.start("pactl",
                 QStringList() << "list"
                               << "sinks"
@@ -298,6 +314,7 @@ void DeviceStatus::readSystemVolume() {
     QString    outputStr = QString::fromUtf8(output);
 
     // Try to get default sink volume
+    process.setProcessEnvironment(env);
     process.start("pactl",
                   QStringList() << "get-sink-volume"
                                 << "@DEFAULT_SINK@");
@@ -369,12 +386,15 @@ void DeviceStatus::setVolume(double volume) {
   // Update internal value
   setVolumeInternal(volume);
 
+  QProcessEnvironment env = setupAudioEnvironment();
+
   // Set system volume
   // Try amixer first (ALSA)
   QProcess process;
   int      volumePercent = static_cast<int>(volume);
 
   //   amixer -D pulse sset Master 50%
+  process.setProcessEnvironment(env);
   process.start("amixer",
                 QStringList()
                   << "-D"
@@ -386,6 +406,7 @@ void DeviceStatus::setVolume(double volume) {
   }
 
   // Fallback: try pactl (PulseAudio)
+  process.setProcessEnvironment(env);
   process.start("pactl",
                 QStringList()
                   << "set-sink-volume"

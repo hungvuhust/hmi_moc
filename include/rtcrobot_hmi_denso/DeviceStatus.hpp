@@ -6,6 +6,7 @@
 #include <QStringList>
 #include <QTimer>
 #include <QNetworkInterface>
+#include <QProcessEnvironment>
 
 class DeviceStatus : public QObject {
   Q_OBJECT
@@ -92,7 +93,8 @@ private:
   qint64 m_startTime    = 0;
 
   // Helper functions
-  void readSystemVolume();
+  void                readSystemVolume();
+  QProcessEnvironment setupAudioEnvironment();
 };
 
 #endif  // DEVICE_STATUS_HPP

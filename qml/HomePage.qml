@@ -214,7 +214,7 @@ Item {
 
                         Text {
                             Layout.fillWidth: true
-                            text: "Định vị: " + localizationScore.toFixed(2) + "%"
+                            text: "Định vị: " + (localizationScore*100).toFixed(2) + "%"
                             font.pixelSize: 13
                             font.bold: true
                             verticalAlignment: Text.AlignVCenter
